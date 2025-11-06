@@ -1,65 +1,111 @@
-// src/hooks/usePayments.ts
-import { useCallback } from "react";
-import { useAppDispatch, useAppSelector } from "./redux";
+// hooks/usePayments.ts
+import { useCallback } from 'react';
+import { useAppSelector, useAppDispatch } from './redux';
 import {
   createPayment,
-  verifyPayment,
+  confirmStripePayment,
+  createCODPayment,
   confirmCODPayment,
-  fetchPaymentStatistics,
-  clearPaymentError,
+  getPaymentDetails,
+  getUserPayments,
+  initiateRefund,
+  getPaymentMethods,
+  getPaymentStatistics,
+  clearError,
   clearCurrentPayment,
-} from "../store/slices/payment/paymentSlice";
+  clearUserPayments,
+} from '../store/slices/payment/paymentSlice';
 import type {
   PaymentRequestData,
-  VerifyPaymentData,
-  CODConfirmData,
+  CODConfirmData
 } from '../types/payment';
 
 export const usePayments = () => {
   const dispatch = useAppDispatch();
-  const { payments, currentPayment, loading, error, statistics } = useAppSelector(
-    (state) => state.payment
-  );
+  const {
+    currentPayment,
+    userPayments,
+    loading,
+    error,
+    paymentMethods,
+    statistics,
+    userPaymentsPagination
+  } = useAppSelector((state) => state.payment);
 
-  const createPaymentAction = useCallback(
-    (data: PaymentRequestData) => dispatch(createPayment(data)).unwrap(),
-    [dispatch]
-  );
+  // Payment actions
+  const createPaymentAction = useCallback((paymentData: PaymentRequestData) => {
+    return dispatch(createPayment(paymentData)).unwrap();
+  }, [dispatch]);
 
-  const verifyPaymentAction = useCallback(
-    (data: VerifyPaymentData) => dispatch(verifyPayment(data)).unwrap(),
-    [dispatch]
-  );
+  const confirmStripePaymentAction = useCallback((paymentIntentId: string) => {
+    return dispatch(confirmStripePayment(paymentIntentId)).unwrap();
+  }, [dispatch]);
 
-  const confirmCODPaymentAction = useCallback(
-    (data: CODConfirmData) => dispatch(confirmCODPayment(data)).unwrap(),
-    [dispatch]
-  );
+  const createCODPaymentAction = useCallback((codData: Omit<PaymentRequestData, 'payment_method' | 'payment_gateway'>) => {
+    return dispatch(createCODPayment(codData)).unwrap();
+  }, [dispatch]);
 
-  const fetchPaymentStatisticsAction = useCallback(
-    () => dispatch(fetchPaymentStatistics()).unwrap(),
-    [dispatch]
-  );
+  const confirmCODPaymentAction = useCallback((codData: CODConfirmData) => {
+    return dispatch(confirmCODPayment(codData)).unwrap();
+  }, [dispatch]);
 
+  const getPaymentDetailsAction = useCallback((orderId: string) => {
+    return dispatch(getPaymentDetails(orderId)).unwrap();
+  }, [dispatch]);
+
+  const getUserPaymentsAction = useCallback((page?: number, limit?: number) => {
+    return dispatch(getUserPayments({ page, limit })).unwrap();
+  }, [dispatch]);
+
+  const initiateRefundAction = useCallback((paymentId: string, amount?: number, reason?: string) => {
+    return dispatch(initiateRefund({ paymentId, amount, reason })).unwrap();
+  }, [dispatch]);
+
+  const getPaymentMethodsAction = useCallback(() => {
+    return dispatch(getPaymentMethods()).unwrap();
+  }, [dispatch]);
+
+  const getPaymentStatisticsAction = useCallback(() => {
+    return dispatch(getPaymentStatistics()).unwrap();
+  }, [dispatch]);
+
+  // Utility actions
   const clearErrorAction = useCallback(() => {
-    dispatch(clearPaymentError());
+    dispatch(clearError());
   }, [dispatch]);
 
   const clearCurrentPaymentAction = useCallback(() => {
     dispatch(clearCurrentPayment());
   }, [dispatch]);
 
+  const clearUserPaymentsAction = useCallback(() => {
+    dispatch(clearUserPayments());
+  }, [dispatch]);
+
   return {
-    payments,
+    // State
     currentPayment,
+    userPayments,
     loading,
     error,
+    paymentMethods,
     statistics,
+    userPaymentsPagination,
+
+    // Actions
     createPayment: createPaymentAction,
-    verifyPayment: verifyPaymentAction,
+    confirmStripePayment: confirmStripePaymentAction,
+    createCODPayment: createCODPaymentAction,
     confirmCODPayment: confirmCODPaymentAction,
-    fetchPaymentStatistics: fetchPaymentStatisticsAction,
+    getPaymentDetails: getPaymentDetailsAction,
+    getUserPayments: getUserPaymentsAction,
+    initiateRefund: initiateRefundAction,
+    getPaymentMethods: getPaymentMethodsAction,
+    getPaymentStatistics: getPaymentStatisticsAction,
+    
+    // Utility actions
     clearError: clearErrorAction,
     clearCurrentPayment: clearCurrentPaymentAction,
+    clearUserPayments: clearUserPaymentsAction,
   };
 };

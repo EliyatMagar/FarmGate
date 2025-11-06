@@ -22,6 +22,8 @@ export interface Order {
   total_amount: number;
   status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
+  payment_method?: string;
+  transaction_id?: string;
   delivery_address: string;
   delivery_date?: string;
   special_instructions?: string;
@@ -50,6 +52,7 @@ export interface CreateOrderData {
   delivery_address: string;
   delivery_date?: string;
   special_instructions?: string;
+  currency?: string;
 }
 
 export interface UpdateOrderStatusData {
@@ -102,4 +105,50 @@ export interface OrderStatistics {
     month: string;
     revenue: number;
   }>;
+}
+
+// NEW: Order validation response
+export interface OrderValidationResponse {
+  success: boolean;
+  message: string;
+  data: {
+    farmer: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    items: Array<{
+      product_id: string;
+      product_name: string;
+      quantity: number;
+      unit_price: number;
+      total_price: number;
+      available_quantity: number;
+    }>;
+    total_amount: number;
+    currency: string;
+  };
+}
+
+// NEW: Order validation result for Redux state
+export interface OrderValidationResult {
+  success: boolean;
+  message: string;
+  data: {
+    farmer: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    items: Array<{
+      product_id: string;
+      product_name: string;
+      quantity: number;
+      unit_price: number;
+      total_price: number;
+      available_quantity: number;
+    }>;
+    total_amount: number;
+    currency: string;
+  };
 }

@@ -1,8 +1,10 @@
+// types/checkout.ts
 export interface CheckoutFormData {
   delivery_address: string;
   delivery_date: string;
   special_instructions?: string;
-  payment_method: 'card' | 'upi' | 'netbanking' | 'wallet' | 'cod';
+  payment_method: 'stripe' | 'cod';
+  currency?: string;
 }
 
 export interface PaymentDetails {
@@ -17,4 +19,15 @@ export interface CheckoutSummary {
   tax: number;
   total: number;
   items_count: number;
+}
+
+// Add PaymentCheckoutProps
+export interface PaymentCheckoutProps {
+  cart: any;
+  formData: CheckoutFormData;
+  validatedOrders: any[]; // Changed from orderIds to validatedOrders
+  onPaymentSuccess: (paymentData: any) => void;
+  onPaymentFailure: (error: string) => void;
+  onBack: () => void;
+  isLoading?: boolean;
 }

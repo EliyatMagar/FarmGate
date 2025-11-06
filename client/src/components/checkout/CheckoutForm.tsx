@@ -1,3 +1,4 @@
+// components/checkout/CheckoutForm.tsx
 import React, { useState } from 'react';
 import type { User } from '../../types/user';
 import type { CheckoutFormData } from '../../types/checkout';
@@ -9,7 +10,10 @@ interface CheckoutFormProps {
 }
 
 const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSubmit, initialData, user }) => {
-  const [formData, setFormData] = useState(initialData);
+  const [formData, setFormData] = useState<CheckoutFormData>({
+    ...initialData,
+    currency: 'USD' // Default currency
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +84,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSubmit, initialData, user
             onChange={handleChange}
             required
             rows={4}
-            placeholder="Enter your complete delivery address including street, city, state, and PIN code"
+            placeholder="Enter your complete delivery address including street, city, state, and ZIP code"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
         </div>
@@ -121,6 +125,26 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSubmit, initialData, user
           />
         </div>
 
+        {/* Currency Selection */}
+        <div className="mb-6">
+          <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
+            Currency
+          </label>
+          <select
+            id="currency"
+            name="currency"
+            value={formData.currency || 'USD'}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          >
+            <option value="USD">US Dollar (USD)</option>
+            <option value="EUR">Euro (EUR)</option>
+            <option value="GBP">British Pound (GBP)</option>
+            <option value="CAD">Canadian Dollar (CAD)</option>
+            <option value="AUD">Australian Dollar (AUD)</option>
+          </select>
+        </div>
+
         {/* Payment Method */}
         <div className="mb-6">
           <label htmlFor="payment_method" className="block text-sm font-medium text-gray-700 mb-2">
@@ -133,15 +157,17 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSubmit, initialData, user
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
           >
+            <option value="stripe">Credit/Debit Card (Stripe)</option>
             <option value="cod">Cash on Delivery (COD)</option>
-            <option value="upi">UPI Payment</option>
-            <option value="netbanking">Net Banking</option>
-            <option value="wallet">Digital Wallet</option>
-            <option value="card">Credit/Debit Card</option>
           </select>
           {formData.payment_method === 'cod' && (
             <p className="text-sm text-green-600 mt-2">
               💰 Pay with cash when your order is delivered. No online payment required.
+            </p>
+          )}
+          {formData.payment_method === 'stripe' && (
+            <p className="text-sm text-blue-600 mt-2">
+              💳 Secure online payment via Stripe. Supports all major credit/debit cards.
             </p>
           )}
         </div>

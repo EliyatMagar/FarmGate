@@ -1,24 +1,46 @@
+// components/cart/CartSummary.tsx
 import React from 'react';
 import type { Cart } from '../../types/cart';
 
 interface CartSummaryProps {
   cart: Cart;
   onCheckout: () => void;
+  currency?: string;
 }
 
-const CartSummary: React.FC<CartSummaryProps> = ({ cart, onCheckout }) => {
+const CartSummary: React.FC<CartSummaryProps> = ({ cart, onCheckout, currency = 'USD' }) => {
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
+      currency: currency
     }).format(price);
   };
 
-  // Ensure numbers are properly rounded
+  // Calculate totals with currency-specific thresholds
+  const getFreeDeliveryThreshold = () => {
+    switch (currency) {
+      case 'USD': return 50;
+      case 'EUR': return 45;
+      case 'GBP': return 40;
+      case 'INR': return 500;
+      default: return 50;
+    }
+  };
+
+  const getDeliveryFee = () => {
+    switch (currency) {
+      case 'USD': return 5.99;
+      case 'EUR': return 5.49;
+      case 'GBP': return 4.99;
+      case 'INR': return 40;
+      default: return 5.99;
+    }
+  };
+
   const subtotal = parseFloat(cart.total_price.toFixed(2));
-  const deliveryFee = subtotal > 500 ? 0 : 40;
+  const freeDeliveryThreshold = getFreeDeliveryThreshold();
+  const baseDeliveryFee = getDeliveryFee();
+  const deliveryFee = subtotal > freeDeliveryThreshold ? 0 : baseDeliveryFee;
   const tax = parseFloat((subtotal * 0.05).toFixed(2)); // 5% tax
   const finalTotal = parseFloat((subtotal + deliveryFee + tax).toFixed(2));
 
@@ -57,10 +79,16 @@ const CartSummary: React.FC<CartSummaryProps> = ({ cart, onCheckout }) => {
         </div>
 
         {/* Delivery Info */}
-        {deliveryFee === 0 && (
+        {deliveryFee === 0 ? (
           <div className="mt-3 p-3 bg-green-50 rounded-lg">
             <p className="text-green-700 text-sm text-center">
               🎉 You qualify for free delivery!
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+            <p className="text-blue-700 text-sm text-center">
+              Add {formatPrice(freeDeliveryThreshold - subtotal)} more for free delivery
             </p>
           </div>
         )}
@@ -71,7 +99,12 @@ const CartSummary: React.FC<CartSummaryProps> = ({ cart, onCheckout }) => {
           disabled={isCheckoutDisabled}
           className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium mt-6"
         >
-          {isCheckoutDisabled ? 'Cannot Checkout' : 'Proceed to Checkout'}
+          {isCheckoutDisabled 
+            ? cart.items.length === 0 
+              ? 'Cart is Empty' 
+              : 'Cannot Checkout' 
+            : 'Proceed to Checkout'
+          }
         </button>
 
         {/* Security Badges */}

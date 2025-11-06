@@ -7,12 +7,13 @@ export const createPaymentsTable = async () => {
       CREATE TABLE IF NOT EXISTS payments (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         order_id UUID NOT NULL,
-        payment_method VARCHAR(20) CHECK (payment_method IN ('cod', 'online', 'card', 'wallet', 'upi', 'bank_transfer')) NOT NULL,
-        payment_status VARCHAR(20) CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded', 'cancelled')) DEFAULT 'pending',
+        buyer_id UUID NOT NULL,
+        payment_method VARCHAR(20) CHECK (payment_method IN ('cod', 'stripe')) NOT NULL,
+        payment_status VARCHAR(20) CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded', 'cancelled', 'processing')) DEFAULT 'pending',
         amount DECIMAL(10,2) NOT NULL,
-        currency VARCHAR(3) DEFAULT 'INR',
+        currency VARCHAR(3) DEFAULT 'USD',
         transaction_id VARCHAR(255),
-        payment_gateway VARCHAR(50) CHECK (payment_gateway IN ('razorpay', 'stripe', 'paypal', 'paytm', 'cashfree', 'none')),
+        payment_gateway VARCHAR(50) CHECK (payment_gateway IN ('stripe', 'none')),
         payment_gateway_order_id VARCHAR(255),
         payment_gateway_payment_id VARCHAR(255),
         payment_gateway_response JSONB,
@@ -24,12 +25,18 @@ export const createPaymentsTable = async () => {
         billing_address JSONB,
         payment_date TIMESTAMP,
         refund_date TIMESTAMP,
+        confirmed_by UUID,
+        confirmed_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         
         CONSTRAINT fk_payment_order
           FOREIGN KEY (order_id) 
           REFERENCES orders(id)
+          ON DELETE CASCADE,
+        CONSTRAINT fk_payment_buyer
+          FOREIGN KEY (buyer_id) 
+          REFERENCES users(id)
           ON DELETE CASCADE
       );
     `;
@@ -51,7 +58,7 @@ export const createPaymentTransactionsTable = async () => {
         transaction_type VARCHAR(20) CHECK (transaction_type IN ('payment', 'refund', 'capture', 'authorize')) NOT NULL,
         transaction_status VARCHAR(20) CHECK (transaction_status IN ('success', 'failed', 'pending')) NOT NULL,
         amount DECIMAL(10,2) NOT NULL,
-        currency VARCHAR(3) DEFAULT 'INR',
+        currency VARCHAR(3) DEFAULT 'USD',
         gateway_transaction_id VARCHAR(255),
         gateway_response JSONB,
         error_code VARCHAR(100),
@@ -73,5 +80,3 @@ export const createPaymentTransactionsTable = async () => {
     throw error;
   }
 };
-
-

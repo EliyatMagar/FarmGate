@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart'; 
+
 interface HeaderProps {
   title: string;
   showBackButton?: boolean;
@@ -14,7 +15,7 @@ const Header: React.FC<HeaderProps> = memo(({
   backUrl = '/dashboard' 
 }) => {
   const { user, logout } = useAuth();
-  const { cartCount } = useCart(); // ADDED
+  const { cartCount } = useCart(); 
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -25,6 +26,10 @@ const Header: React.FC<HeaderProps> = memo(({
   const handleBack = () => {
     navigate(backUrl);
   };
+
+  // Check if user is a buyer (only buyers can use cart)
+  const isBuyer = user?.role === 'buyer';
+  const canUseCart = isBuyer;
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -84,18 +89,27 @@ const Header: React.FC<HeaderProps> = memo(({
                     Products
                   </Link>
                   
-                  {/* Cart Link with Badge - ADDED */}
-                  <Link 
-                    to="/cart" 
-                    className="relative text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                  >
-                    🛒 Cart
-                    {cartCount > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        {cartCount}
-                      </span>
-                    )}
-                  </Link>
+                  {/* Cart Link with Badge - Only for buyers */}
+                  {canUseCart ? (
+                    <Link 
+                      to="/cart" 
+                      className="relative text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                    >
+                      🛒 Cart
+                      {cartCount > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {cartCount}
+                        </span>
+                      )}
+                    </Link>
+                  ) : (
+                    <span 
+                      className="text-gray-400 font-medium cursor-not-allowed"
+                      title={`Cart is only available for buyers. Current role: ${user.role}`}
+                    >
+                      🛒 Cart
+                    </span>
+                  )}
                 </div>
 
                 {/* User Profile */}
@@ -173,7 +187,7 @@ const Header: React.FC<HeaderProps> = memo(({
           </div>
         </div>
 
-        {/* Mobile Navigation - ADDED */}
+        {/* Mobile Navigation */}
         {user && (
           <div className="md:hidden flex justify-center space-x-6 pb-2 border-t border-gray-200 pt-3">
             <Link 
@@ -182,17 +196,28 @@ const Header: React.FC<HeaderProps> = memo(({
             >
               Products
             </Link>
-            <Link 
-              to="/cart" 
-              className="relative text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm"
-            >
-              🛒 Cart
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
+            
+            {/* Mobile Cart Link - Only for buyers */}
+            {canUseCart ? (
+              <Link 
+                to="/cart" 
+                className="relative text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm"
+              >
+                🛒 Cart
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+            ) : (
+              <span 
+                className="text-gray-400 font-medium cursor-not-allowed text-sm"
+                title={`Cart is only available for buyers. Current role: ${user.role}`}
+              >
+                🛒 Cart
+              </span>
+            )}
           </div>
         )}
       </div>

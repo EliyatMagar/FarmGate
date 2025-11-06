@@ -3,6 +3,8 @@ import { useCallback } from 'react';
 import { useAppSelector, useAppDispatch } from './redux';
 import {
   createOrder,
+  validateOrder,
+  createOrderAfterPayment,
   fetchMyOrders,
   fetchFarmerOrders,
   fetchOrderById,
@@ -12,6 +14,7 @@ import {
   fetchOrderStatistics,
   clearError,
   clearCurrentOrder,
+  clearValidationResult,
   setFilters,
   clearFilters,
   updateOrderInList,
@@ -36,12 +39,25 @@ export const useOrders = () => {
     error,
     filters,
     pagination,
-    statistics
+    statistics,
+    validationResult
   } = useAppSelector((state) => state.order);
 
   // Order actions
   const createOrderAction = useCallback((orderData: CreateOrderData) => {
     return dispatch(createOrder(orderData)).unwrap();
+  }, [dispatch]);
+
+  const validateOrderAction = useCallback((orderData: CreateOrderData) => {
+    return dispatch(validateOrder(orderData)).unwrap();
+  }, [dispatch]);
+
+  const createOrderAfterPaymentAction = useCallback((orderData: CreateOrderData & {
+    payment_method?: string;
+    payment_status?: string;
+    transaction_id?: string;
+  }) => {
+    return dispatch(createOrderAfterPayment(orderData)).unwrap();
   }, [dispatch]);
 
   const fetchMyOrdersAction = useCallback((filters: OrderFilters = {}) => {
@@ -81,6 +97,10 @@ export const useOrders = () => {
     dispatch(clearCurrentOrder());
   }, [dispatch]);
 
+  const clearValidationResultAction = useCallback(() => {
+    dispatch(clearValidationResult());
+  }, [dispatch]);
+
   const setFiltersAction = useCallback((newFilters: OrderFilters) => {
     dispatch(setFilters(newFilters));
   }, [dispatch]);
@@ -112,9 +132,12 @@ export const useOrders = () => {
     filters,
     pagination,
     statistics,
+    validationResult,
 
     // Actions
     createOrder: createOrderAction,
+    validateOrder: validateOrderAction,
+    createOrderAfterPayment: createOrderAfterPaymentAction,
     fetchMyOrders: fetchMyOrdersAction,
     fetchFarmerOrders: fetchFarmerOrdersAction,
     fetchOrderById: fetchOrderByIdAction,
@@ -126,6 +149,7 @@ export const useOrders = () => {
     // Utility actions
     clearError: clearErrorAction,
     clearCurrentOrder: clearCurrentOrderAction,
+    clearValidationResult: clearValidationResultAction,
     setFilters: setFiltersAction,
     clearFilters: clearFiltersAction,
     updateOrderInList: updateOrderInListAction,

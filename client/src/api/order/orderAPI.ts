@@ -1,4 +1,3 @@
-// api/orderAPI.ts
 import type {
   OrderResponse,
   OrdersResponse,
@@ -6,13 +5,14 @@ import type {
   UpdateOrderStatusData,
   UpdatePaymentStatusData,
   OrderFilters,
-  OrderStatistics
+  OrderStatistics,
+  OrderValidationResponse
 } from "../../types/order";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/v1';
 
 export const orderAPI = {
-  // Create new order
+  // Create order (without payment - for backward compatibility)
   createOrder: async (orderData: CreateOrderData): Promise<OrderResponse> => {
     const response = await fetch(`${API_BASE_URL}/orders`, {
       method: 'POST',
@@ -21,6 +21,52 @@ export const orderAPI = {
       },
       credentials: 'include',
       body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Order creation failed');
+    }
+
+    return await response.json();
+  },
+
+  // Validate order before payment
+  validateOrder: async (orderData: CreateOrderData): Promise<OrderValidationResponse> => {
+    const response = await fetch(`${API_BASE_URL}/orders/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Order validation failed');
+    }
+
+    return await response.json();
+  },
+
+  // Create order after successful payment
+  createOrderAfterPayment: async (orderData: CreateOrderData & {
+    payment_method?: string;
+    payment_status?: string;
+    transaction_id?: string;
+  }): Promise<OrderResponse> => {
+    const response = await fetch(`${API_BASE_URL}/orders/create-after-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        ...orderData,
+        payment_method: orderData.payment_method || 'stripe',
+        payment_status: orderData.payment_status || 'paid'
+      }),
     });
 
     if (!response.ok) {
@@ -90,10 +136,10 @@ export const orderAPI = {
     return await response.json();
   },
 
-  // Update order status (Farmer only) - FIXED: Changed to PUT method
+  // Update order status (Farmer only)
   updateOrderStatus: async (id: string, data: UpdateOrderStatusData): Promise<OrderResponse> => {
     const response = await fetch(`${API_BASE_URL}/orders/${id}/status`, {
-      method: 'PUT', // CHANGED FROM PATCH TO PUT
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -109,10 +155,10 @@ export const orderAPI = {
     return await response.json();
   },
 
-  // Update payment status - FIXED: Changed to PUT method
+  // Update payment status
   updatePaymentStatus: async (id: string, data: UpdatePaymentStatusData): Promise<OrderResponse> => {
     const response = await fetch(`${API_BASE_URL}/orders/${id}/payment-status`, {
-      method: 'PUT', // CHANGED FROM PATCH TO PUT
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },

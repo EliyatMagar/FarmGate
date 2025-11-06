@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
+// components/dashboard/BuyerDashboard.tsx
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { useCart } from '../../hooks/useCart';
@@ -16,23 +17,40 @@ const BuyerDashboard: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [priceRange, setPriceRange] = useState({ min: 0, max: 10000 });
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Memoized fetch function
-  const fetchProductsWithFilters = useCallback((page: number = 1) => {
-    dispatch(fetchProducts({ 
-      page, 
-      limit: 12,
-      search: searchTerm || undefined,
-      category_id: selectedCategory || undefined,
-      min_price: priceRange.min || undefined,
-      max_price: priceRange.max || undefined
-    }));
-  }, [dispatch, searchTerm, selectedCategory, priceRange]);
+  // Memoized fetch function with proper error handling
+  const fetchProductsWithFilters = useCallback(async (page: number = 1) => {
+    try {
+      setError(null);
+      await dispatch(fetchProducts({ 
+        page, 
+        limit: 12,
+        search: searchTerm || undefined,
+        category_id: selectedCategory || undefined,
+        min_price: priceRange.min > 0 ? priceRange.min : undefined,
+        max_price: priceRange.max < 10000 ? priceRange.max : undefined
+      })).unwrap();
+    } catch (err: any) {
+      console.error('Failed to fetch products:', err);
+      setError(err.message || 'Failed to load products');
+    }
+  }, [dispatch, searchTerm, selectedCategory, priceRange.min, priceRange.max]);
 
   useEffect(() => {
     console.log('🔄 BuyerDashboard - Component mounted');
-    fetchProductsWithFilters(1);
-    loadCart();
+    
+    const initializeDashboard = async () => {
+      try {
+        await fetchProductsWithFilters(1);
+        await loadCart();
+      } catch (err: any) {
+        console.error('Dashboard initialization error:', err);
+        setError('Failed to initialize dashboard');
+      }
+    };
+
+    initializeDashboard();
   }, [fetchProductsWithFilters, loadCart]);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -48,8 +66,12 @@ const BuyerDashboard: React.FC = () => {
     setSearchTerm('');
     setSelectedCategory('');
     setPriceRange({ min: 0, max: 10000 });
+    fetchProductsWithFilters(1);
   };
 
+  // Safe array access with proper fallbacks
+  const safeProducts = Array.isArray(products) ? products : [];
+  
   // Mock categories for filter
   const categories = [
     { id: '1', name: 'Vegetables', icon: '🥦' },
@@ -60,15 +82,95 @@ const BuyerDashboard: React.FC = () => {
     { id: '6', name: 'Herbs', icon: '🌿' },
   ];
 
-  // Featured products
-  const featuredProducts = products
-    .filter((product: any) => product.rating >= 4 || product.is_organic)
-    .slice(0, 6);
+  // Safe product filtering with proper fallbacks
+  const featuredProducts = useMemo(() => {
+    return safeProducts
+      .filter((product: any) => (product?.rating || 0) >= 4 || product?.is_organic)
+      .slice(0, 6);
+  }, [safeProducts]);
 
-  // Recent products
-  const recentProducts = products
-    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 6);
+  const recentProducts = useMemo(() => {
+    return [...safeProducts] // Create a copy to avoid mutation
+      .sort((a: any, b: any) => {
+        const dateA = a?.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b?.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, 6);
+  }, [safeProducts]);
+
+  // Safe pagination access with proper defaults
+  const safePagination = useMemo(() => {
+    return pagination || {
+      currentPage: 1,
+      totalPages: 1,
+      totalProducts: safeProducts.length,
+      hasPrev: false,
+      hasNext: false
+    };
+  }, [pagination, safeProducts.length]);
+
+  // Safe price range handlers
+  const handleMinPriceChange = (value: string) => {
+    const numValue = parseInt(value) || 0;
+    setPriceRange(prev => ({ 
+      ...prev, 
+      min: Math.max(0, numValue) 
+    }));
+  };
+
+  const handleMaxPriceChange = (value: string) => {
+    const numValue = parseInt(value) || 10000;
+    setPriceRange(prev => ({ 
+      ...prev, 
+      max: Math.min(10000, numValue) 
+    }));
+  };
+
+  // Quick filter handlers
+  const handleQuickFilter = (filterType: string) => {
+    switch (filterType) {
+      case 'organic':
+        dispatch(fetchProducts({ is_organic: true }));
+        break;
+      case 'under100':
+        setPriceRange({ min: 0, max: 100 });
+        fetchProductsWithFilters(1);
+        break;
+      case 'topRated':
+        dispatch(fetchProducts({ sort_by: 'rating', sort_order: 'DESC' }));
+        break;
+      case 'newArrivals':
+        dispatch(fetchProducts({ sort_by: 'created_at', sort_order: 'DESC' }));
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Dashboard Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              fetchProductsWithFilters(1);
+            }}
+            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-all duration-300 font-medium"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -119,7 +221,7 @@ const BuyerDashboard: React.FC = () => {
                 </div>
                 <div>
                   <h1 className="text-3xl lg:text-4xl font-bold text-white mb-1">
-                    Welcome back, {user.name}!
+                    Welcome back, {user.name || 'Buyer'}!
                   </h1>
                   <p className="text-emerald-100 text-lg">
                     Discover fresh, organic products from local farmers
@@ -137,7 +239,7 @@ const BuyerDashboard: React.FC = () => {
                       <span className="text-2xl">🛒</span>
                       <div>
                         <p className="text-sm text-emerald-100">Cart Items</p>
-                        <p className="text-2xl font-bold text-white">{cartCount}</p>
+                        <p className="text-2xl font-bold text-white">{cartCount || 0}</p>
                       </div>
                     </div>
                   </div>
@@ -147,7 +249,7 @@ const BuyerDashboard: React.FC = () => {
                       <span className="text-2xl">💰</span>
                       <div>
                         <p className="text-sm text-emerald-100">Total</p>
-                        <p className="text-2xl font-bold text-white">₹{cartTotal.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-white">₹{(cartTotal || 0).toFixed(2)}</p>
                       </div>
                     </div>
                   </div>
@@ -207,7 +309,7 @@ const BuyerDashboard: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-gray-900 text-lg">Shopping Cart</h3>
-                <p className="text-sm text-gray-600">{cartCount} items</p>
+                <p className="text-sm text-gray-600">{cartCount || 0} items</p>
               </div>
             </div>
           </Link>
@@ -294,7 +396,7 @@ const BuyerDashboard: React.FC = () => {
                     type="number"
                     placeholder="Min"
                     value={priceRange.min}
-                    onChange={(e) => setPriceRange(prev => ({ ...prev, min: parseInt(e.target.value) || 0 }))}
+                    onChange={(e) => handleMinPriceChange(e.target.value)}
                     className="flex-1 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-3 focus:ring-green-500/20 focus:border-green-500 transition-all duration-300"
                   />
                   <span className="text-gray-500 font-medium">to</span>
@@ -302,7 +404,7 @@ const BuyerDashboard: React.FC = () => {
                     type="number"
                     placeholder="Max"
                     value={priceRange.max}
-                    onChange={(e) => setPriceRange(prev => ({ ...prev, max: parseInt(e.target.value) || 10000 }))}
+                    onChange={(e) => handleMaxPriceChange(e.target.value)}
                     className="flex-1 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-3 focus:ring-green-500/20 focus:border-green-500 transition-all duration-300"
                   />
                 </div>
@@ -317,7 +419,10 @@ const BuyerDashboard: React.FC = () => {
                   Clear All
                 </button>
                 <button
-                  onClick={() => setIsFiltersOpen(false)}
+                  onClick={() => {
+                    setIsFiltersOpen(false);
+                    fetchProductsWithFilters(1);
+                  }}
                   className="flex-1 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition-all duration-300 font-medium"
                 >
                   Apply
@@ -329,32 +434,25 @@ const BuyerDashboard: React.FC = () => {
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap gap-3 mt-6">
             <button
-              onClick={clearFilters}
+              onClick={() => handleQuickFilter('organic')}
               className="bg-green-100 text-green-800 px-5 py-3 rounded-xl text-sm font-semibold hover:bg-green-200 transition-all duration-300 hover:scale-105 active:scale-95"
             >
               🌱 All Organic
             </button>
             <button
-              onClick={() => {
-                setPriceRange({ min: 0, max: 100 });
-                setSelectedCategory('');
-              }}
+              onClick={() => handleQuickFilter('under100')}
               className="bg-blue-100 text-blue-800 px-5 py-3 rounded-xl text-sm font-semibold hover:bg-blue-200 transition-all duration-300 hover:scale-105 active:scale-95"
             >
               💰 Under ₹100
             </button>
             <button
-              onClick={() => {
-                dispatch(fetchProducts({ sort_by: 'rating', sort_order: 'DESC' }));
-              }}
+              onClick={() => handleQuickFilter('topRated')}
               className="bg-yellow-100 text-yellow-800 px-5 py-3 rounded-xl text-sm font-semibold hover:bg-yellow-200 transition-all duration-300 hover:scale-105 active:scale-95"
             >
               ⭐ Top Rated
             </button>
             <button
-              onClick={() => {
-                dispatch(fetchProducts({ sort_by: 'created_at', sort_order: 'DESC' }));
-              }}
+              onClick={() => handleQuickFilter('newArrivals')}
               className="bg-purple-100 text-purple-800 px-5 py-3 rounded-xl text-sm font-semibold hover:bg-purple-200 transition-all duration-300 hover:scale-105 active:scale-95"
             >
               🆕 New Arrivals
@@ -422,6 +520,12 @@ const BuyerDashboard: React.FC = () => {
                 <span className="text-3xl">🌟</span>
               </div>
               <p className="text-gray-500 text-lg">No featured products found</p>
+              <button
+                onClick={() => fetchProductsWithFilters(1)}
+                className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Refresh
+              </button>
             </div>
           )}
         </div>
@@ -456,6 +560,12 @@ const BuyerDashboard: React.FC = () => {
                 <span className="text-3xl">📦</span>
               </div>
               <p className="text-gray-500 text-lg">No new products available</p>
+              <button
+                onClick={() => fetchProductsWithFilters(1)}
+                className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Refresh
+              </button>
             </div>
           )}
         </div>
@@ -466,7 +576,7 @@ const BuyerDashboard: React.FC = () => {
             <div>
               <h2 className="text-2xl font-bold text-gray-900">All Products</h2>
               <p className="text-gray-600 mt-1">
-                Showing {products.length} products • <span className="font-semibold">{cartCount} items in cart</span>
+                Showing {safeProducts.length} products • <span className="font-semibold">{cartCount || 0} items in cart</span>
               </p>
             </div>
           </div>
@@ -476,36 +586,36 @@ const BuyerDashboard: React.FC = () => {
           ) : (
             <>
               <ProductList
-                products={products}
+                products={safeProducts}
                 showActions={false}
                 showAddToCart={true}
               />
 
-              {/* Enhanced Pagination - Fixed property names */}
-              {pagination && pagination.totalPages > 1 && (
+              {/* Enhanced Pagination */}
+              {safePagination.totalPages > 1 && (
                 <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 mt-8 pt-6 border-t border-gray-200">
                   <div className="text-sm text-gray-600">
-                    Page {pagination.currentPage} of {pagination.totalPages} • {pagination.totalProducts} total products
+                    Page {safePagination.currentPage} of {safePagination.totalPages} • {safePagination.totalProducts} total products
                   </div>
                   
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={!pagination.hasPrev}
+                      onClick={() => handlePageChange(safePagination.currentPage - 1)}
+                      disabled={!safePagination.hasPrev}
                       className="px-5 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 active:scale-95"
                     >
                       ← Previous
                     </button>
 
                     <div className="flex space-x-1">
-                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      {Array.from({ length: Math.min(5, safePagination.totalPages) }, (_, i) => {
                         const page = i + 1;
                         return (
                           <button
                             key={page}
                             onClick={() => handlePageChange(page)}
                             className={`px-4 py-2 border text-sm font-medium rounded-xl transition-all duration-300 ${
-                              page === pagination.currentPage
+                              page === safePagination.currentPage
                                 ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white border-green-600 shadow-lg'
                                 : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:scale-105'
                             }`}
@@ -517,8 +627,8 @@ const BuyerDashboard: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={!pagination.hasNext}
+                      onClick={() => handlePageChange(safePagination.currentPage + 1)}
+                      disabled={!safePagination.hasNext}
                       className="px-5 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 active:scale-95"
                     >
                       Next →
@@ -531,7 +641,7 @@ const BuyerDashboard: React.FC = () => {
         </div>
 
         {/* Cart Summary Sticky Banner */}
-        {cartCount > 0 && (
+        {(cartCount || 0) > 0 && (
           <div className="sticky bottom-6 z-10 bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl shadow-2xl p-6 border border-orange-300">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center space-x-4 mb-4 lg:mb-0">
@@ -541,7 +651,7 @@ const BuyerDashboard: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-bold text-white">Ready to Checkout?</h3>
                   <p className="text-amber-100">
-                    {cartCount} items • Total: ₹{cartTotal.toFixed(2)}
+                    {cartCount} items • Total: ₹{(cartTotal || 0).toFixed(2)}
                   </p>
                 </div>
               </div>

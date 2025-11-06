@@ -1,3 +1,4 @@
+// components/cart/CartItem.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { CartItem as CartItemType } from '../../types/cart';
@@ -5,10 +6,11 @@ import { useCart } from '../../hooks/useCart';
 
 interface CartItemProps {
   item: CartItemType;
+  currency?: string;
 }
 
-const CartItem: React.FC<CartItemProps> = ({ item }) => {
-  const { removeFromCart, incrementItemQuantity, decrementItemQuantity } = useCart(); // Removed updateQuantity
+const CartItem: React.FC<CartItemProps> = ({ item, currency = 'USD' }) => {
+  const { removeFromCart, incrementItemQuantity, decrementItemQuantity } = useCart();
 
   const handleIncrement = () => {
     if (item.quantity < item.available_quantity) {
@@ -35,14 +37,13 @@ const CartItem: React.FC<CartItemProps> = ({ item }) => {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'INR'
+      currency: currency
     }).format(price);
   };
 
-  // In CartItem.tsx - update the itemTotal calculation
-const itemTotal = parseFloat((item.price_per_unit * item.quantity).toFixed(2));
+  const itemTotal = parseFloat((item.price_per_unit * item.quantity).toFixed(2));
 
   return (
     <div className="p-6 hover:bg-gray-50 transition-colors">

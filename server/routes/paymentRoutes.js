@@ -1,40 +1,48 @@
+// routes/paymentRoutes.js - CORRECT VERSION
 import express from "express";
 import {
   createPayment,
-  verifyPayment,
-  processWebhook,
+  confirmStripePayment,
+  createCODPayment,
   confirmCODPayment,
+  processStripeWebhook,
   getPaymentDetails,
   initiateRefund,
   getPaymentMethods,
   getPaymentStatistics,
+  getUserPayments,
+  updatePaymentOrderId
 } from "../controllers/paymentController.js";
 import { isAuthenticatedUser, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// 💳 Create new Razorpay payment order
-router.post("/create", isAuthenticatedUser, createPayment);
+// 💳 Payment creation routes
+router.post("/create", isAuthenticatedUser, createPayment); // This is what your frontend is calling
+router.post("/create/cod", isAuthenticatedUser, createCODPayment);
 
-// ✅ Verify payment after successful checkout
-router.post("/callback", verifyPayment);
+// ✅ Payment verification
+router.post("/verify/stripe", confirmStripePayment);
 
-// 🔔 Razorpay webhook listener
-router.post("/webhook", processWebhook);
+// 🔔 Webhook
+router.post("/webhook/stripe", express.raw({ type: 'application/json' }), processStripeWebhook);
 
-// 🧾 Confirm Cash on Delivery payment
-router.post("/cod/confirm", isAuthenticatedUser, confirmCODPayment);
+// 🧾 COD confirmation
+router.post("/cod/confirm", isAuthenticatedUser, authorizeRoles('farmer', 'admin'), confirmCODPayment);
 
-// 🔍 Get single payment details
+// 🔍 Payment details
 router.get("/details/:orderId", isAuthenticatedUser, getPaymentDetails);
+router.get("/user-payments", isAuthenticatedUser, getUserPayments);
 
-// 💸 Initiate refund
-router.post("/refund", isAuthenticatedUser, initiateRefund);
+// 💸 Refunds
+router.post("/refund", isAuthenticatedUser, authorizeRoles('admin'), initiateRefund);
 
-// 💰 List available payment methods
+// 💰 Payment methods
 router.get("/methods", getPaymentMethods);
 
-// 📊 Get payment statistics (for admins)
-router.get("/stats", isAuthenticatedUser, getPaymentStatistics);
+// 📊 Statistics
+router.get("/stats", isAuthenticatedUser, authorizeRoles('admin'), getPaymentStatistics);
+
+router.put('/update-order-id', isAuthenticatedUser, updatePaymentOrderId);
 
 export default router;

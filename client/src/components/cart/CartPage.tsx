@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+// components/cart/CartPage.tsx
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,6 +11,7 @@ const CartPage: React.FC = () => {
   const { cart, loading, loadCart, clearCart } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [selectedCurrency, setSelectedCurrency] = useState('USD');
 
   useEffect(() => {
     // Load cart when component mounts
@@ -52,6 +54,10 @@ const CartPage: React.FC = () => {
     navigate('/checkout');
   };
 
+  const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCurrency(e.target.value);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
@@ -86,11 +92,35 @@ const CartPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Shopping Cart 🛒</h1>
-          <p className="text-gray-600 mt-2">
-            Review your items and proceed to checkout
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Shopping Cart 🛒</h1>
+            <p className="text-gray-600 mt-2">
+              Review your items and proceed to checkout
+            </p>
+          </div>
+          
+          {/* Currency Selector */}
+          {cart.items.length > 0 && (
+            <div className="mt-4 sm:mt-0">
+              <label htmlFor="currency" className="text-sm font-medium text-gray-700 mr-2">
+                Currency:
+              </label>
+              <select
+                id="currency"
+                value={selectedCurrency}
+                onChange={handleCurrencyChange}
+                className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="INR">INR (₹)</option>
+                <option value="CAD">CAD (C$)</option>
+                <option value="AUD">AUD (A$)</option>
+              </select>
+            </div>
+          )}
         </div>
 
         {cart.items.length === 0 ? (
@@ -138,7 +168,11 @@ const CartPage: React.FC = () => {
                 {/* Cart Items List */}
                 <div className="divide-y divide-gray-200">
                   {cart.items.map((item) => (
-                    <CartItem key={item.id} item={item} />
+                    <CartItem 
+                      key={item.id} 
+                      item={item} 
+                      currency={selectedCurrency}
+                    />
                   ))}
                 </div>
 
@@ -163,7 +197,8 @@ const CartPage: React.FC = () => {
                       <li>• Minimum order quantities apply for each product</li>
                       <li>• Products are sourced directly from local farmers</li>
                       <li>• Freshness and quality guaranteed</li>
-                      <li>• Free delivery on orders above ₹500</li>
+                      <li>• Free delivery on orders above certain amount</li>
+                      <li>• Multiple currency support available</li>
                     </ul>
                   </div>
                 </div>
@@ -175,6 +210,7 @@ const CartPage: React.FC = () => {
               <CartSummary 
                 cart={cart}
                 onCheckout={handleCheckout}
+                currency={selectedCurrency}
               />
             </div>
           </div>
@@ -186,19 +222,19 @@ const CartPage: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900 mb-6">You Might Also Like</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Placeholder for recommended products */}
-              <div className="bg-white rounded-lg shadow p-4 text-center">
+              <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-md transition-shadow">
                 <div className="text-gray-400 text-2xl mb-2">🥦</div>
                 <p className="text-sm text-gray-600">Fresh vegetables</p>
               </div>
-              <div className="bg-white rounded-lg shadow p-4 text-center">
+              <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-md transition-shadow">
                 <div className="text-gray-400 text-2xl mb-2">🍎</div>
                 <p className="text-sm text-gray-600">Seasonal fruits</p>
               </div>
-              <div className="bg-white rounded-lg shadow p-4 text-center">
+              <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-md transition-shadow">
                 <div className="text-gray-400 text-2xl mb-2">🌿</div>
                 <p className="text-sm text-gray-600">Organic herbs</p>
               </div>
-              <div className="bg-white rounded-lg shadow p-4 text-center">
+              <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-md transition-shadow">
                 <div className="text-gray-400 text-2xl mb-2">🥛</div>
                 <p className="text-sm text-gray-600">Dairy products</p>
               </div>
